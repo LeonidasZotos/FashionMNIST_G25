@@ -11,7 +11,7 @@ main_path = Path(os.getcwd()) / "data"
     val_labels,
     test_features,
     test_labels,
-) = load_data(main_path=main_path, subset=2000)
+) = load_data(main_path=main_path, subset=None)
 print_shapes(
     [train_features, val_features, train_labels, val_labels, test_features, test_labels]
 )
@@ -28,7 +28,7 @@ multi_model_run(
     test_labels=test_labels,
     reduce_dims="pca",
     model_list=[
-        # KNeighborsClassifier(n_neighbors=3),
+        KNeighborsClassifier(n_neighbors=3),
         RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
     ],
     metrics=[

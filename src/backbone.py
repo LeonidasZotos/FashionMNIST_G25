@@ -1,5 +1,6 @@
 # %%
 import os
+from operator import mod
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -8,6 +9,7 @@ import pandas as pd
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import *
+from sklearn.metrics import plot_confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
@@ -15,6 +17,19 @@ from sklearn.tree import DecisionTreeClassifier
 from tqdm import tqdm
 
 # %%
+
+label_array = {
+    0: "top",
+    1: "trouser",
+    2: "pullover",
+    3: "dress",
+    4: "coat",
+    5: "sandal",
+    6: "shirt",
+    7: "sneaker",
+    8: "bag",
+    9: "ankle_boot",
+}
 
 
 def return_shape(tes):
@@ -39,7 +54,7 @@ def visualize_image(features):
         plt.yticks([])
         plt.imshow(features[i].reshape(28, 28))
     # plt.show()
-    plt.savefig("dataset_image.png")
+    plt.savefig("outputs/dataset_image.png")
 
 
 # %%
@@ -115,7 +130,6 @@ def train_and_predict(
     model,
     metrics,
     reduce_dims=None,
-    normalize=True,
 ):
     # scale data
     X = StandardScaler().fit_transform(train_features)
@@ -143,6 +157,11 @@ def train_and_predict(
         except ValueError:
             dict_results[metric.__name__] = metric(y1, y2, average="macro")
 
+    plt.cla()
+    plt.clf()
+    plot_confusion_matrix(model, X_test, test_labels)
+    plt.savefig(f"outputs/confusion_{str(model)}.png")
+
     print(dict_results)
     return dict_results
 
@@ -169,5 +188,5 @@ def multi_model_run(
         )
     print(final_dict_results)
     df = pd.DataFrame.from_dict(final_dict_results)
-    df.to_csv("outputs.csv", mode="a")
+    df.to_csv("outputs/outputs.csv", mode="a")
     return final_dict_results
