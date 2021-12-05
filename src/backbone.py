@@ -5,11 +5,13 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import *
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
+from sklearn.tree import DecisionTreeClassifier
 from tqdm import tqdm
 
 # %%
@@ -37,7 +39,7 @@ def visualize_image(features):
         plt.yticks([])
         plt.imshow(features[i].reshape(28, 28))
     # plt.show()
-    plt.savefig("../dataset_image.png")
+    plt.savefig("dataset_image.png")
 
 
 # %%
@@ -97,6 +99,14 @@ def preproces_skeleton(array, process=np.flip):
         return array
 
 
+def dimensionality_reduction(X, X_test, method="pca"):
+    if method == "pca":
+        pca = PCA(0.85)
+        pca.fit(X)
+        X = pca.transform(X)
+        X_test = pca.transform(X_test)
+
+
 def train_and_predict(
     train_features,
     test_features,
@@ -104,6 +114,7 @@ def train_and_predict(
     test_labels,
     model,
     metrics,
+    reduce_dims=None,
     normalize=True,
 ):
     # scale data
@@ -112,9 +123,12 @@ def train_and_predict(
 
     # preprocess_step
     X = preproces_skeleton(X, None)
+    if reduce_dims != None:
+        dimensionality_reduction(X, X_test, reduce_dims)
 
     # fit model
     model.fit(X, train_labels)
+
     y1 = test_labels
     y2 = model.predict(X_test)
 
@@ -134,7 +148,13 @@ def train_and_predict(
 
 
 def multi_model_run(
-    train_features, test_features, train_labels, test_labels, model_list, metrics
+    train_features,
+    test_features,
+    train_labels,
+    test_labels,
+    model_list,
+    reduce_dims,
+    metrics,
 ):
     final_dict_results = {}
     for model in tqdm(model_list):
@@ -144,6 +164,7 @@ def multi_model_run(
             train_labels=train_labels,
             test_labels=test_labels,
             model=model,
+            reduce_dims=reduce_dims,
             metrics=metrics,
         )
     print(final_dict_results)
