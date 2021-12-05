@@ -1,4 +1,5 @@
 # %%
+import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -9,10 +10,13 @@ from sklearn.metrics import *
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
+from tqdm import tqdm
 
 # %%
-main_path = Path("../data/")
+main_path = Path(os.getcwd()).parent / "data"
 # %%
+
+
 def return_shape(tes):
     print(tes.shape)
 
@@ -125,7 +129,7 @@ def train_and_predict(train_features, test_features, model, metrics, normalize=T
 
 def multi_model_run(train_features, test_features, model_list, metrics):
     final_dict_results = {}
-    for model in model_list:
+    for model in tqdm(model_list):
         final_dict_results[str(model)] = train_and_predict(
             train_features=train_features,
             test_features=test_features,
@@ -145,7 +149,7 @@ def multi_model_run(train_features, test_features, model_list, metrics):
     val_labels,
     test_features,
     test_labels,
-) = load_data(main_path=main_path, subset=5000)
+) = load_data(main_path=main_path, subset=None)
 print_shapes(
     [train_features, val_features, train_labels, val_labels, test_features, test_labels]
 )
@@ -154,7 +158,7 @@ print_shapes(
 # SEE IF READING WORKED
 visualize_image(train_features)
 
-#%% Run entire pipeline
+# %% Run entire pipeline
 multi_model_run(
     train_features=train_features,
     test_features=test_features,
