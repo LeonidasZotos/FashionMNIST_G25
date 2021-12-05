@@ -37,9 +37,9 @@ def visualize_image(features):
         plt.subplot(5, 5, i + 1)
         plt.xticks([])
         plt.yticks([])
-        # imshow  takes an array ( with dimension = 2, RGB or B/W) and gives you the image that corresponds to it
         plt.imshow(features[i].reshape(28, 28))
-        plt.show()
+    # plt.show()
+    plt.savefig("../dataset_image.png")
 
 
 # %%
@@ -99,7 +99,15 @@ def preproces_skeleton(array, process=np.flip):
         return array
 
 
-def train_and_predict(train_features, test_features, model, metrics, normalize=True):
+def train_and_predict(
+    train_features,
+    test_features,
+    train_labels,
+    test_labels,
+    model,
+    metrics,
+    normalize=True,
+):
     # scale data
     X = StandardScaler().fit_transform(train_features)
     X_test = StandardScaler().fit_transform(test_features)
@@ -127,49 +135,18 @@ def train_and_predict(train_features, test_features, model, metrics, normalize=T
     return dict_results
 
 
-def multi_model_run(train_features, test_features, model_list, metrics):
+def multi_model_run(
+    train_features, test_features, train_labels, test_labels, model_list, metrics
+):
     final_dict_results = {}
     for model in tqdm(model_list):
         final_dict_results[str(model)] = train_and_predict(
             train_features=train_features,
             test_features=test_features,
+            train_labels=train_labels,
+            test_labels=test_labels,
             model=model,
             metrics=metrics,
         )
     print(final_dict_results)
     return final_dict_results
-
-
-# %%
-# READ DATA : Dont forget to remove subset (set to None for full data)
-(
-    train_features,
-    val_features,
-    train_labels,
-    val_labels,
-    test_features,
-    test_labels,
-) = load_data(main_path=main_path, subset=None)
-print_shapes(
-    [train_features, val_features, train_labels, val_labels, test_features, test_labels]
-)
-
-# %%
-# SEE IF READING WORKED
-visualize_image(train_features)
-
-# %% Run entire pipeline
-multi_model_run(
-    train_features=train_features,
-    test_features=test_features,
-    model_list=[
-        KNeighborsClassifier(n_neighbors=3),
-        RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
-    ],
-    metrics=[
-        accuracy_score,
-        precision_score,
-        recall_score,
-    ],
-)
-# %%
