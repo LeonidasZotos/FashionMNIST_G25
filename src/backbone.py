@@ -5,15 +5,13 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import *
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
-# %%
-main_path = Path(os.getcwd()).parent / "data"
 # %%
 
 
@@ -149,4 +147,6 @@ def multi_model_run(
             metrics=metrics,
         )
     print(final_dict_results)
+    df = pd.DataFrame.from_dict(final_dict_results)
+    df.to_csv("outputs.csv", mode="a")
     return final_dict_results

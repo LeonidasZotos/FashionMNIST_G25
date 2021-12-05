@@ -1,0 +1,4 @@
+,KNeighborsClassifier(n_neighbors=3),"RandomForestClassifier(max_depth=5, max_features=1, n_estimators=10)"
+accuracy_score,0.758,0.686
+precision_score,0.7699498429547775,0.7032244981176056
+recall_score,0.7587136022489438,0.6849242874346075

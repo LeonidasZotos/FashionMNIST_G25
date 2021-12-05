@@ -1,5 +1,7 @@
-from backbone import *
+from src.backbone import *
 
+# %%
+main_path = Path(os.getcwd()) / "data"
 # %%
 # READ DATA : Dont forget to remove subset (set to None for full data)
 (
@@ -9,7 +11,7 @@ from backbone import *
     val_labels,
     test_features,
     test_labels,
-) = load_data(main_path=main_path, subset=None)
+) = load_data(main_path=main_path, subset=1000)
 print_shapes(
     [train_features, val_features, train_labels, val_labels, test_features, test_labels]
 )

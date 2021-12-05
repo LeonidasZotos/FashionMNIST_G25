@@ -1,8 +1,13 @@
 # FashionMNIST_G25
 Image classification based on the "Fashion MNIST" dataset for the Machine Learning course
 
+# DATA (IMPORTANT)
+- Download the data from https://www.kaggle.com/zalando-research/fashionmnist
+- Put ALL of the files in the data folder. All the .csv and ubyte stuff. Or nothing will happen!
+
 # Structure of code
 - All the configurations and main running stuff : runner.py
+  - I patched in a way to just take a subset of the data for faster computation : Just go to runner.py, in the load_data function there just add whatever number of images you want for subset. Eg 1000.
 - All the functions : backbone.py
 - The .ipynb jupyter notebooks are auto generated but you can use them to test new features etc
   - They WILL be overwritten. So make sure to either rename it to something else or save them elsewhere to be safe.

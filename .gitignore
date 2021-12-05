@@ -18,3 +18,4 @@ tags
 runs/
 demos/runs/*
 *ubyte
+!outputs.csv
