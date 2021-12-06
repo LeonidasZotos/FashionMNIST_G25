@@ -4,3 +4,4 @@
 - augmentation framework
 - Dimensionality reduction?
 - Plots as well
+- Use validation set
