@@ -15,6 +15,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier
 from tqdm import tqdm
+from datetime import datetime
 
 # %%
 
@@ -31,7 +32,6 @@ label_array = {
     9: "ankle_boot",
 }
 
-
 def return_shape(tes):
     print(tes.shape)
 
@@ -47,14 +47,14 @@ def print_shapes(arr):
 # %%
 
 
-def visualize_image(features):
+def visualize_image(features, res_path):
     for i in range(25):
         plt.subplot(5, 5, i + 1)
         plt.xticks([])
         plt.yticks([])
         plt.imshow(features[i].reshape(28, 28))
     # plt.show()
-    plt.savefig("outputs/dataset_image.png")
+    plt.savefig(f"{res_path}/dataset_image.png")
 
 
 # %%
@@ -129,6 +129,7 @@ def train_and_predict(
     test_labels,
     model,
     metrics,
+    res_path,
     reduce_dims=None,
 ):
     # scale data
@@ -160,7 +161,7 @@ def train_and_predict(
     plt.cla()
     plt.clf()
     plot_confusion_matrix(model, X_test, test_labels)
-    plt.savefig(f"outputs/confusion_{str(model)}.png")
+    plt.savefig(f"{res_path}/confusion_{str(model)}.png")
 
     print(dict_results)
     return dict_results
@@ -174,6 +175,7 @@ def multi_model_run(
     model_list,
     reduce_dims,
     metrics,
+    res_path
 ):
     final_dict_results = {}
     for model in tqdm(model_list):
@@ -185,8 +187,9 @@ def multi_model_run(
             model=model,
             reduce_dims=reduce_dims,
             metrics=metrics,
+            res_path=res_path
         )
     print(final_dict_results)
     df = pd.DataFrame.from_dict(final_dict_results)
-    df.to_csv("outputs/outputs.csv", mode="a")
+    df.to_csv(f"{res_path}/outputs.csv", mode="a")
     return final_dict_results

@@ -18,3 +18,5 @@ runs/
 demos/runs/*
 *ubyte
 !outputs.csv
+outputs/
+outputs/*
