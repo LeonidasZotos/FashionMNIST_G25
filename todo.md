@@ -6,3 +6,4 @@
 - Plots as well
 - Use validation set
 - Additional Models
+- add cross validation -> subha
