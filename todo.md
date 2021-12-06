@@ -5,3 +5,4 @@
 - Dimensionality reduction?
 - Plots as well
 - Use validation set
+- Additional Models
