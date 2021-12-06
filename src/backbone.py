@@ -191,11 +191,22 @@ def multi_model_run(
     train_labels,
     test_labels,
     model_list,
+    ##################
+    model_parameters,
+    ##################
     reduce_dims,
     metrics,
     res_path,
     folds=10,
 ):
+    num_params_per_model = []
+    for params in model_parameters:
+        num_params_per_model.append(len(params))
+
+    ############################
+    # TODO: VALIDATION: Figure out how to access list of models and edit params - Tumi
+    ############################
+
     final_dict_results = {}
     for model in tqdm(model_list):
         final_dict_results[str(model)] = train_and_predict(

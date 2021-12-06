@@ -37,10 +37,18 @@ multi_model_run(
         RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
         MLPClassifier(hidden_layer_sizes=56),
     ],
+    ####################################
+    model_parameters=[
+        [[3, 4, 5, 6, 7]],
+        [[3, 4, 5], [8, 10, 12], [1, 2, 3]],
+        [[28, 42, 56, 70, 84]]
+    ],
+    ####################################
     metrics=[
         accuracy_score,
         precision_score,
         recall_score,
+        f1_score,
     ],
     res_path=res_path,
     folds=10,
