@@ -1,5 +1,6 @@
 # %%
 import os
+from datetime import datetime
 from operator import mod
 from pathlib import Path
 
@@ -10,12 +11,11 @@ from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import *
 from sklearn.metrics import plot_confusion_matrix
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import KFold, cross_val_score, train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier
 from tqdm import tqdm
-from datetime import datetime
 
 # %%
 
@@ -31,6 +31,7 @@ label_array = {
     8: "bag",
     9: "ankle_boot",
 }
+
 
 def return_shape(tes):
     print(tes.shape)
@@ -131,39 +132,55 @@ def train_and_predict(
     metrics,
     res_path,
     reduce_dims=None,
+    folds=10,
 ):
     # scale data
-    X = StandardScaler().fit_transform(train_features)
-    X_test = StandardScaler().fit_transform(test_features)
+    X_orig = StandardScaler().fit_transform(train_features)
+    X_test_orig = StandardScaler().fit_transform(test_features)
+    train_labels_orig, test_labels_orig = train_labels.copy(), test_labels.copy()
 
     # preprocess_step
-    X = preproces_skeleton(X, None)
+    X_orig = preproces_skeleton(X_orig, None)
     if reduce_dims != None:
-        dimensionality_reduction(X, X_test, reduce_dims)
+        dimensionality_reduction(X_orig, X_test_orig, reduce_dims)
 
-    # fit model
-    model.fit(X, train_labels)
+    dict_results = {x.__name__: [] for x in metrics}
 
-    y1 = test_labels
-    y2 = model.predict(X_test)
+    # cross validation
+    kf = KFold(n_splits=folds, shuffle=True)
 
-    # metrics
-    if type(metrics) != list:
-        metrics = [metrics]
+    for train_indices, test_indices in tqdm(kf.split(X_orig), total=folds):
+        X = X_orig[train_indices]
+        train_labels = train_labels_orig[train_indices]
+        X_test = X_test_orig[test_indices]
+        test_labels = test_labels_orig[test_indices]
 
-    dict_results = {}
-    for metric in metrics:
-        try:
-            dict_results[metric.__name__] = metric(y1, y2)
-        except ValueError:
-            dict_results[metric.__name__] = metric(y1, y2, average="macro")
+        # fit model
+        model.fit(X, train_labels)
+
+        y1 = test_labels
+        y2 = model.predict(X_test)
+
+        # metrics
+        if type(metrics) != list:
+            metrics = [metrics]
+
+        for metric in metrics:
+            try:
+                dict_results[metric.__name__].append(metric(y1, y2))
+            except ValueError:
+                dict_results[metric.__name__].append(metric(y1, y2, average="macro"))
+
+    # print(dict_results)
+    for metric in dict_results:
+        dict_results[metric] = np.mean(dict_results[metric])
+        # dict_results[method][res_arr] = np.mean(dict_results[method][res_arr])
 
     plt.cla()
     plt.clf()
     plot_confusion_matrix(model, X_test, test_labels)
     plt.savefig(f"{res_path}/confusion_{str(model)}.png")
 
-    print(dict_results)
     return dict_results
 
 
@@ -175,7 +192,8 @@ def multi_model_run(
     model_list,
     reduce_dims,
     metrics,
-    res_path
+    res_path,
+    folds=10,
 ):
     final_dict_results = {}
     for model in tqdm(model_list):
@@ -187,7 +205,8 @@ def multi_model_run(
             model=model,
             reduce_dims=reduce_dims,
             metrics=metrics,
-            res_path=res_path
+            res_path=res_path,
+            folds=folds,
         )
     print(final_dict_results)
     df = pd.DataFrame.from_dict(final_dict_results)

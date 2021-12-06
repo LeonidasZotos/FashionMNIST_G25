@@ -2,7 +2,7 @@ from src.backbone import *
 
 # %%
 main_path = Path(os.getcwd()) / "data"
-time = datetime.now().strftime('%d_%m_%Hh%M')
+time = datetime.now().strftime("%d_%m_%Hh%M")
 res_path = str(os.getcwd()) + "/outputs/" + time
 # %%
 # READ DATA : Dont forget to remove subset (set to None for full data)
@@ -19,8 +19,9 @@ print_shapes(
 )
 
 # %%
-# SEE IF READING WORKED + make folder for results 
-os.mkdir(res_path)
+# SEE IF READING WORKED + make folder for results
+if not Path.is_dir(Path(res_path)):
+    os.mkdir(res_path)
 visualize_image(train_features, res_path)
 
 # %% Run entire pipeline
@@ -39,6 +40,7 @@ multi_model_run(
         precision_score,
         recall_score,
     ],
-    res_path=res_path
+    res_path=res_path,
+    folds=10,
 )
 # %%

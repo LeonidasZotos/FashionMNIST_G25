@@ -5,6 +5,15 @@ Image classification based on the "Fashion MNIST" dataset for the Machine Learni
 - Download the data from https://www.kaggle.com/zalando-research/fashionmnist
 - Put ALL of the files in the data folder. All the .csv and ubyte stuff. Or nothing will happen!
 
+# Parameters Notes(in runner.py)
+- in load_data
+  - subset : Set to any integer or None for full data
+- in multi_model_run
+  - reduce_dims : name of reduction method
+  - model_list : pass in a list of any models you want with their params
+  - metrics : list of all metrics
+  - folds : no of folds for k folds
+
 # Structure of code
 - All the configurations and main running stuff : runner.py
   - I patched in a way to just take a subset of the data for faster computation : Just go to runner.py, in the load_data function there just add whatever number of images you want for subset. Eg 1000.
