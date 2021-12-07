@@ -15,14 +15,15 @@ res_path = str(os.getcwd()) + "/outputs/" + time
     val_labels,
     test_features,
     test_labels,
-) = load_data(main_path=main_path, subset=None)
+) = load_data(main_path=main_path, subset=1000)
 print_shapes(
     [train_features, val_features, train_labels, val_labels, test_features, test_labels]
 )
 
 # %%
 # SEE IF READING WORKED + make folder for results
-os.mkdir(res_path)
+if not Path.is_dir(Path(res_path)):
+    os.mkdir(res_path)
 visualize_image(train_features, res_path)
 
 # %% Run entire pipeline
@@ -31,11 +32,13 @@ multi_model_run(
     test_features=test_features,
     train_labels=train_labels,
     test_labels=test_labels,
+    val_features=val_features,
+    val_labels=val_labels,
     reduce_dims="pca",
     model_list=[
         KNeighborsClassifier(n_neighbors=3),
         RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
-        MLPClassifier(hidden_layer_sizes=56),
+        MLPClassifier(hidden_layer_sizes=56, max_iter=2000),
     ],
     ####################################
     model_parameters=[
@@ -51,6 +54,6 @@ multi_model_run(
         f1_score,
     ],
     res_path=res_path,
-    folds=10,
+    folds=2,
 )
 # %%

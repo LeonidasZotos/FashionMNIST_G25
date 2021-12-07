@@ -1,7 +1,7 @@
 # %%
 import os
 from datetime import datetime
-from operator import mod
+from operator import contains, mod
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -123,12 +123,13 @@ def dimensionality_reduction(X, X_test, method="pca"):
         X = pca.transform(X)
         X_test = pca.transform(X_test)
 
-
 def train_and_predict(
     train_features,
     test_features,
     train_labels,
     test_labels,
+    val_features,
+    val_labels,
     model,
     metrics,
     res_path,
@@ -136,50 +137,31 @@ def train_and_predict(
     folds=10,
 ):
     # scale data
-    X_orig = StandardScaler().fit_transform(train_features)
-    X_test_orig = StandardScaler().fit_transform(test_features)
-    train_labels_orig, test_labels_orig = train_labels.copy(), test_labels.copy()
+    train_features = np.concatenate((train_features, test_features)) # combining both here because k-fold will split them again into parts
+    train_labels = np.concatenate((train_labels, test_labels))
+    X = StandardScaler().fit_transform(train_features) 
+    X_test = StandardScaler().fit_transform(val_features) # essentially validation set
+
 
     # preprocess_step
-    X_orig = preproces_skeleton(X_orig, None)
+    X = preproces_skeleton(X, None)
     if reduce_dims != None:
-        dimensionality_reduction(X_orig, X_test_orig, reduce_dims)
-
+        dimensionality_reduction(X, X_test, reduce_dims)
+    
+    # k -fold
     dict_results = {x.__name__: [] for x in metrics}
 
-    # cross validation
-    kf = KFold(n_splits=folds, shuffle=True)
-
-    for train_indices, test_indices in tqdm(kf.split(X_orig), total=folds):
-        X = X_orig[train_indices]
-        train_labels = train_labels_orig[train_indices]
-        X_test = X_test_orig[test_indices]
-        test_labels = test_labels_orig[test_indices]
-
-        # fit model
-        model.fit(X, train_labels)
-
-        y1 = test_labels
-        y2 = model.predict(X_test)
-
-        # metrics
-        if type(metrics) != list:
-            metrics = [metrics]
-
-        for metric in metrics:
-            try:
-                dict_results[metric.__name__].append(metric(y1, y2))
-            except ValueError:
-                dict_results[metric.__name__].append(metric(y1, y2, average="macro"))
-
-    # print(dict_results)
-    for metric in dict_results:
-        dict_results[metric] = np.mean(dict_results[metric])
-        # dict_results[method][res_arr] = np.mean(dict_results[method][res_arr])
+    for metric in metrics:
+        if metric.__name__ in ["precision_score", "f1_score", "recall_score"]:
+            dict_results[metric.__name__] = np.mean(cross_val_score(model, X, train_labels, scoring=make_scorer(metric, average = "micro"), cv=folds, n_jobs=8))
+        else:
+            dict_results[metric.__name__] = np.mean(cross_val_score(model, X, train_labels, scoring=make_scorer(metric), cv=folds, n_jobs=8))
+    
+    print(dict_results)
 
     plt.cla()
     plt.clf()
-    plot_confusion_matrix(model, X_test, test_labels)
+    plot_confusion_matrix(model.fit(X, train_labels), X_test, val_labels)
     plt.savefig(f"{res_path}/confusion_{str(model)}.png")
 
     return dict_results
@@ -197,6 +179,8 @@ def multi_model_run(
     reduce_dims,
     metrics,
     res_path,
+    val_features,
+    val_labels,
     folds=10,
 ):
     num_params_per_model = []
@@ -214,6 +198,8 @@ def multi_model_run(
             test_features=test_features,
             train_labels=train_labels,
             test_labels=test_labels,
+            val_features=val_features,
+            val_labels=val_labels,
             model=model,
             reduce_dims=reduce_dims,
             metrics=metrics,
@@ -224,3 +210,5 @@ def multi_model_run(
     df = pd.DataFrame.from_dict(final_dict_results)
     df.to_csv(f"{res_path}/outputs.csv", mode="a")
     return final_dict_results
+
+# %%
