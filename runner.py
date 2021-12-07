@@ -4,7 +4,7 @@ from src.backbone import *
 
 # %%
 main_path = Path(os.getcwd()) / "data"
-time = datetime.now().strftime('%d_%m_%Hh%M')
+time = datetime.now().strftime("%d_%m_%Hh%M")
 res_path = str(os.getcwd()) + "/outputs/" + time
 # %%
 # READ DATA : Dont forget to remove subset (set to None for full data)
@@ -44,7 +44,7 @@ multi_model_run(
     model_parameters=[
         [[3, 4, 5, 6, 7]],
         [[3, 4, 5], [8, 10, 12], [1, 2, 3]],
-        [[28, 42, 56, 70, 84]]
+        [[28, 42, 56, 70, 84]],
     ],
     ####################################
     metrics=[

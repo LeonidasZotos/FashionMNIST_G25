@@ -13,9 +13,9 @@ from sklearn.metrics import *
 from sklearn.metrics import plot_confusion_matrix
 from sklearn.model_selection import KFold, cross_val_score, train_test_split
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.neural_network import MLPClassifier
 from tqdm import tqdm
 
 # %%
@@ -123,6 +123,7 @@ def dimensionality_reduction(X, X_test, method="pca"):
         X = pca.transform(X)
         X_test = pca.transform(X_test)
 
+
 def train_and_predict(
     train_features,
     test_features,
@@ -137,26 +138,45 @@ def train_and_predict(
     folds=10,
 ):
     # scale data
-    train_features = np.concatenate((train_features, test_features)) # combining both here because k-fold will split them again into parts
+    train_features = np.concatenate(
+        (train_features, test_features)
+    )  # combining both here because k-fold will split them again into parts
     train_labels = np.concatenate((train_labels, test_labels))
-    X = StandardScaler().fit_transform(train_features) 
-    X_test = StandardScaler().fit_transform(val_features) # essentially validation set
-
+    X = StandardScaler().fit_transform(train_features)
+    X_test = StandardScaler().fit_transform(val_features)  # essentially validation set
 
     # preprocess_step
     X = preproces_skeleton(X, None)
     if reduce_dims != None:
         dimensionality_reduction(X, X_test, reduce_dims)
-    
+
     # k -fold
     dict_results = {x.__name__: [] for x in metrics}
 
     for metric in metrics:
         if metric.__name__ in ["precision_score", "f1_score", "recall_score"]:
-            dict_results[metric.__name__] = np.mean(cross_val_score(model, X, train_labels, scoring=make_scorer(metric, average = "micro"), cv=folds, n_jobs=8))
+            dict_results[metric.__name__] = np.mean(
+                cross_val_score(
+                    model,
+                    X,
+                    train_labels,
+                    scoring=make_scorer(metric, average="micro"),
+                    cv=folds,
+                    n_jobs=8,
+                )
+            )
         else:
-            dict_results[metric.__name__] = np.mean(cross_val_score(model, X, train_labels, scoring=make_scorer(metric), cv=folds, n_jobs=8))
-    
+            dict_results[metric.__name__] = np.mean(
+                cross_val_score(
+                    model,
+                    X,
+                    train_labels,
+                    scoring=make_scorer(metric),
+                    cv=folds,
+                    n_jobs=8,
+                )
+            )
+
     print(dict_results)
 
     plt.cla()
@@ -210,5 +230,6 @@ def multi_model_run(
     df = pd.DataFrame.from_dict(final_dict_results)
     df.to_csv(f"{res_path}/outputs.csv", mode="a")
     return final_dict_results
+
 
 # %%
