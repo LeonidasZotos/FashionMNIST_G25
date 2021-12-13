@@ -110,17 +110,25 @@ def load_data(main_path, subset=None):
 
 
 def return_process(im):
-    list_of_procs = [np.flip]
+    list_of_procs = [np.flip, lambda x: x * 2, lambda x: x ** 2]
     return random.choice(list_of_procs)(
         im
     )  # TODO :add probability and every other transform
 
 
-def preproces_skeleton(array, labels, disable=False):
+def preprocess_skeleton(array, labels, disable=False, sequential=True):
     # TODO : Append results to the array instead of replacing it
     # TODO : Use the labels to make sure it is correct after you append something
-    array = parallel(return_process, arr=array)
-    return array, labels
+    if disable == True:
+        return array, labels
+    else:
+        if sequential == True:
+            # array = parallel(return_process, arr=array)
+            array = np.array([return_process(x) for x in array])
+            return array, labels
+        else:
+            array = parallel(return_process, arr=array)
+            return array, labels
 
 
 def dimensionality_reduction(X, X_test, method="pca"):
@@ -153,8 +161,8 @@ def train_and_predict(
     X_test = StandardScaler().fit_transform(val_features)  # essentially validation set
 
     # preprocess_step
-    X, train_labels = preproces_skeleton(
-        X, train_labels, disable=True
+    X, train_labels = preprocess_skeleton(
+        X, train_labels, disable=False
     )  # enable for processing
 
     visualize_image(X, res_path)

@@ -138,17 +138,25 @@ def load_data(main_path, subset=None):
 
 
 def return_process(im):
-    list_of_procs = [np.flip]
+    list_of_procs = [np.flip, lambda x: x * 2, lambda x: x ** 2]
     return random.choice(list_of_procs)(
         im
     )  # TODO :add probability and every other transform
 
 
-def preproces_skeleton(array, labels, disable=False):
+def preprocess_skeleton(array, labels, disable=False, sequential=True):
     # TODO : Append results to the array instead of replacing it
     # TODO : Use the labels to make sure it is correct after you append something
-    array = parallel(return_process, arr=array)
-    return array, labels
+    if disable == True:
+        return array, labels
+    else:
+        if sequential == True:
+            # array = parallel(return_process, arr=array)
+            array = np.array([return_process(x) for x in array])
+            return array, labels
+        else:
+            array = parallel(return_process, arr=array)
+            return array, labels
 
 
 def dimensionality_reduction(X, X_test, method=&#34;pca&#34;):
@@ -181,8 +189,8 @@ def train_and_predict(
     X_test = StandardScaler().fit_transform(val_features)  # essentially validation set
 
     # preprocess_step
-    X, train_labels = preproces_skeleton(
-        X, train_labels, disable=True
+    X, train_labels = preprocess_skeleton(
+        X, train_labels, disable=False
     )  # enable for processing
 
     visualize_image(X, res_path)
@@ -400,8 +408,8 @@ def multi_model_run(
     return final_dict_results</code></pre>
 </details>
 </dd>
-<dt id="src.backbone.preproces_skeleton"><code class="name flex">
-<span>def <span class="ident">preproces_skeleton</span></span>(<span>array, labels, disable=False)</span>
+<dt id="src.backbone.preprocess_skeleton"><code class="name flex">
+<span>def <span class="ident">preprocess_skeleton</span></span>(<span>array, labels, disable=False, sequential=True)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -409,11 +417,19 @@ def multi_model_run(
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def preproces_skeleton(array, labels, disable=False):
+<pre><code class="python">def preprocess_skeleton(array, labels, disable=False, sequential=True):
     # TODO : Append results to the array instead of replacing it
     # TODO : Use the labels to make sure it is correct after you append something
-    array = parallel(return_process, arr=array)
-    return array, labels</code></pre>
+    if disable == True:
+        return array, labels
+    else:
+        if sequential == True:
+            # array = parallel(return_process, arr=array)
+            array = np.array([return_process(x) for x in array])
+            return array, labels
+        else:
+            array = parallel(return_process, arr=array)
+            return array, labels</code></pre>
 </details>
 </dd>
 <dt id="src.backbone.print_shapes"><code class="name flex">
@@ -440,7 +456,7 @@ def multi_model_run(
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def return_process(im):
-    list_of_procs = [np.flip]
+    list_of_procs = [np.flip, lambda x: x * 2, lambda x: x ** 2]
     return random.choice(list_of_procs)(
         im
     )  # TODO :add probability and every other transform</code></pre>
@@ -490,8 +506,8 @@ def multi_model_run(
     X_test = StandardScaler().fit_transform(val_features)  # essentially validation set
 
     # preprocess_step
-    X, train_labels = preproces_skeleton(
-        X, train_labels, disable=True
+    X, train_labels = preprocess_skeleton(
+        X, train_labels, disable=False
     )  # enable for processing
 
     visualize_image(X, res_path)
@@ -575,7 +591,7 @@ def multi_model_run(
 <li><code><a title="src.backbone.dimensionality_reduction" href="#src.backbone.dimensionality_reduction">dimensionality_reduction</a></code></li>
 <li><code><a title="src.backbone.load_data" href="#src.backbone.load_data">load_data</a></code></li>
 <li><code><a title="src.backbone.multi_model_run" href="#src.backbone.multi_model_run">multi_model_run</a></code></li>
-<li><code><a title="src.backbone.preproces_skeleton" href="#src.backbone.preproces_skeleton">preproces_skeleton</a></code></li>
+<li><code><a title="src.backbone.preprocess_skeleton" href="#src.backbone.preprocess_skeleton">preprocess_skeleton</a></code></li>
 <li><code><a title="src.backbone.print_shapes" href="#src.backbone.print_shapes">print_shapes</a></code></li>
 <li><code><a title="src.backbone.return_process" href="#src.backbone.return_process">return_process</a></code></li>
 <li><code><a title="src.backbone.return_shape" href="#src.backbone.return_shape">return_shape</a></code></li>

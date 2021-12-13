@@ -15,7 +15,7 @@ res_path = str(os.getcwd()) + "/outputs/" + time_now
     val_labels,
     test_features,
     test_labels,
-) = load_data(main_path=main_path, subset=1000)
+) = load_data(main_path=main_path, subset=10000)
 print_shapes(
     [train_features, val_features, train_labels, val_labels, test_features, test_labels]
 )
@@ -59,5 +59,5 @@ multi_model_run(
 # %%
 # Save run_time to the outputs
 end_time = time.time() - start_time
-with open(res_path + "outputs.csv", "a+") as f:
+with open(res_path + "/outputs.csv", "a+") as f:
     f.write(f"\nTime taken : {end_time}")
