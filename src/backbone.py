@@ -54,7 +54,7 @@ def visualize_image(features, res_path):
         plt.subplot(5, 5, i + 1)
         plt.xticks([])
         plt.yticks([])
-        plt.imshow(features[i].reshape(28, 28))
+        plt.imshow(features[i].reshape(28, 28), cmap='gray')
     # plt.show()
     plt.savefig(f"{res_path}/dataset_image.png")
 
