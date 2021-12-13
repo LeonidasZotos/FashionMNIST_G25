@@ -26,6 +26,7 @@ if not Path.is_dir(Path(res_path)):
     os.mkdir(res_path)
 # visualize_image(train_features, res_path)
 
+start_time = time.time()
 # %% Run entire pipeline
 multi_model_run(
     train_features=train_features,
@@ -57,3 +58,7 @@ multi_model_run(
     folds=2,
 )
 # %%
+# Save run_time to the outputs
+end_time = time.time() - start_time
+with open(res_path + "outputs.csv", "a+") as f:
+    f.write(f"\nTime taken : {end_time}")

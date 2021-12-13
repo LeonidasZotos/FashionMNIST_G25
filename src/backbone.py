@@ -1,8 +1,8 @@
 # %%
 import os
 import random
+import time
 from datetime import datetime
-from operator import contains, mod
 from pathlib import Path
 
 import matplotlib.pyplot as plt
