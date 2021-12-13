@@ -1,5 +1,6 @@
 # FashionMNIST_G25
 Image classification based on the "Fashion MNIST" dataset for the Machine Learning course
+- Documentation website https://leonidaszotos.github.io/FashionMNIST_G25/index.html
 
 # DATA (IMPORTANT)
 - Download the data from https://www.kaggle.com/zalando-research/fashionmnist

@@ -36,15 +36,19 @@ multi_model_run(
     val_labels=val_labels,
     reduce_dims="pca",
     model_list=[
-        KNeighborsClassifier(n_neighbors=3),
-        RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
-        MLPClassifier(hidden_layer_sizes=56, max_iter=2000),
+        KNeighborsClassifier,
+        RandomForestClassifier,
+        MLPClassifier,
     ],
     ####################################
     model_parameters=[
-        [[3, 4, 5, 6, 7]],
-        [[3, 4, 5], [8, 10, 12], [1, 2, 3]],
-        [[28, 42, 56, 70, 84]],
+        {"n_neighbors": [3, 4, 5, 6, 7]},
+        {
+            "max_depth": [3, 4, 5],
+            "n_estimators": [8, 10, 12],
+            "max_features": [1, 2, 3],
+        },
+        {"hidden_layer_sizes": [28, 42, 56, 70, 84], "max_iter": [1000, 1500, 2000]},
     ],
     ####################################
     metrics=[
@@ -54,7 +58,7 @@ multi_model_run(
         f1_score,
     ],
     res_path=res_path,
-    folds=2,
+    folds=5,
 )
 # %%
 # Save run_time to the outputs

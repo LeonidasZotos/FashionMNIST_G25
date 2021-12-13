@@ -41,7 +41,8 @@ from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import *
 from sklearn.metrics import plot_confusion_matrix
-from sklearn.model_selection import KFold, cross_val_score, train_test_split
+from sklearn.model_selection import (GridSearchCV, KFold, cross_val_score,
+                                     train_test_split)
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
@@ -234,6 +235,39 @@ def train_and_predict(
     return dict_results
 
 
+def validation_stage(
+    model_list,
+    model_parameters,
+    train_features,
+    train_labels,
+    test_features,
+    test_labels,
+):
+    # Perform the Validation using Sklearn GridSearch
+    model_best_params = []
+    print(&#34;[INFO] Performing Validation&#34;)
+    for i in range(len(tqdm(model_list))):
+        print(&#34;[VALIDATION] %s model being validated\n&#34; % (model_list[i]))
+        grid = GridSearchCV(
+            model_list[i](), model_parameters[i], verbose=1, refit=True, n_jobs=12
+        )
+        grid.fit(train_features, train_labels)
+
+        model_best_params.append(grid.best_params_)
+        # model_best_params[model_list[i]] = grid.best_params_
+        grid_predictions = grid.predict(test_features)
+
+        print(classification_report(test_labels, grid_predictions))
+        print(
+            &#34;[VALIDATION] %s model validation completed\n&#34;
+            &#34;==========================================\n&#34; % (model_list[i])
+        )
+
+    print(&#34;[INFO] Validation Stage Completed&#34;)
+
+    return model_best_params
+
+
 def multi_model_run(
     train_features,
     test_features,
@@ -250,12 +284,22 @@ def multi_model_run(
     val_labels,
     folds=10,
 ):
-    num_params_per_model = []
-    for params in model_parameters:
-        num_params_per_model.append(len(params))
 
     ############################
-    # TODO: VALIDATION: Figure out how to access list of models and edit params - Tumi
+    model_best_params = validation_stage(
+        model_list,
+        model_parameters,
+        train_features,
+        train_labels,
+        test_features,
+        test_labels,
+    )
+
+    print(&#34;[INFO] Applying Best Parameters to Models&#34;)
+    for i in range(len(tqdm(model_list))):
+        model_list[i] = model_list[i](**model_best_params[i])
+
+    print(&#34;[INFO] Training and Testing Optimised Models&#34;)
     ############################
 
     final_dict_results = {}
@@ -379,12 +423,22 @@ def multi_model_run(
     val_labels,
     folds=10,
 ):
-    num_params_per_model = []
-    for params in model_parameters:
-        num_params_per_model.append(len(params))
 
     ############################
-    # TODO: VALIDATION: Figure out how to access list of models and edit params - Tumi
+    model_best_params = validation_stage(
+        model_list,
+        model_parameters,
+        train_features,
+        train_labels,
+        test_features,
+        test_labels,
+    )
+
+    print(&#34;[INFO] Applying Best Parameters to Models&#34;)
+    for i in range(len(tqdm(model_list))):
+        model_list[i] = model_list[i](**model_best_params[i])
+
+    print(&#34;[INFO] Training and Testing Optimised Models&#34;)
     ############################
 
     final_dict_results = {}
@@ -551,6 +605,48 @@ def multi_model_run(
     return dict_results</code></pre>
 </details>
 </dd>
+<dt id="src.backbone.validation_stage"><code class="name flex">
+<span>def <span class="ident">validation_stage</span></span>(<span>model_list, model_parameters, train_features, train_labels, test_features, test_labels)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def validation_stage(
+    model_list,
+    model_parameters,
+    train_features,
+    train_labels,
+    test_features,
+    test_labels,
+):
+    # Perform the Validation using Sklearn GridSearch
+    model_best_params = []
+    print(&#34;[INFO] Performing Validation&#34;)
+    for i in range(len(tqdm(model_list))):
+        print(&#34;[VALIDATION] %s model being validated\n&#34; % (model_list[i]))
+        grid = GridSearchCV(
+            model_list[i](), model_parameters[i], verbose=1, refit=True, n_jobs=12
+        )
+        grid.fit(train_features, train_labels)
+
+        model_best_params.append(grid.best_params_)
+        # model_best_params[model_list[i]] = grid.best_params_
+        grid_predictions = grid.predict(test_features)
+
+        print(classification_report(test_labels, grid_predictions))
+        print(
+            &#34;[VALIDATION] %s model validation completed\n&#34;
+            &#34;==========================================\n&#34; % (model_list[i])
+        )
+
+    print(&#34;[INFO] Validation Stage Completed&#34;)
+
+    return model_best_params</code></pre>
+</details>
+</dd>
 <dt id="src.backbone.visualize_image"><code class="name flex">
 <span>def <span class="ident">visualize_image</span></span>(<span>features, res_path)</span>
 </code></dt>
@@ -596,6 +692,7 @@ def multi_model_run(
 <li><code><a title="src.backbone.return_process" href="#src.backbone.return_process">return_process</a></code></li>
 <li><code><a title="src.backbone.return_shape" href="#src.backbone.return_shape">return_shape</a></code></li>
 <li><code><a title="src.backbone.train_and_predict" href="#src.backbone.train_and_predict">train_and_predict</a></code></li>
+<li><code><a title="src.backbone.validation_stage" href="#src.backbone.validation_stage">validation_stage</a></code></li>
 <li><code><a title="src.backbone.visualize_image" href="#src.backbone.visualize_image">visualize_image</a></code></li>
 </ul>
 </li>
