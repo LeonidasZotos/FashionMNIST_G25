@@ -13,7 +13,7 @@ from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import *
 from sklearn.metrics import plot_confusion_matrix
-from sklearn.model_selection import KFold, cross_val_score, train_test_split
+from sklearn.model_selection import KFold, cross_val_score, train_test_split, GridSearchCV
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
@@ -132,17 +132,17 @@ def dimensionality_reduction(X, X_test, method="pca"):
 
 
 def train_and_predict(
-    train_features,
-    test_features,
-    train_labels,
-    test_labels,
-    val_features,
-    val_labels,
-    model,
-    metrics,
-    res_path,
-    reduce_dims=None,
-    folds=10,
+        train_features,
+        test_features,
+        train_labels,
+        test_labels,
+        val_features,
+        val_labels,
+        model,
+        metrics,
+        res_path,
+        reduce_dims=None,
+        folds=10,
 ):
     # scale data
     train_features = np.concatenate(
@@ -198,28 +198,56 @@ def train_and_predict(
     return dict_results
 
 
+def validation_stage(model_list, model_parameters, train_features, train_labels, test_features, test_labels):
+    # Perform the Validation using Sklearn GridSearch
+    model_best_params = []
+    print("[INFO] Performing Validation")
+    for i in range(len(tqdm(model_list))):
+        print("[VALIDATION] %s model being validated\n" % (model_list[i]))
+        grid = GridSearchCV(model_list[i](), model_parameters[i], verbose=1, refit=True, n_jobs=12)
+        grid.fit(train_features, train_labels)
+
+        model_best_params.append(grid.best_params_)
+        # model_best_params[model_list[i]] = grid.best_params_
+        grid_predictions = grid.predict(test_features)
+
+        print(classification_report(test_labels, grid_predictions))
+        print("[VALIDATION] %s model validation completed\n"
+              "==========================================\n" % (model_list[i]))
+
+    print("[INFO] Validation Stage Completed")
+
+    return model_best_params
+
+
 def multi_model_run(
-    train_features,
-    test_features,
-    train_labels,
-    test_labels,
-    model_list,
-    ##################
-    model_parameters,
-    ##################
-    reduce_dims,
-    metrics,
-    res_path,
-    val_features,
-    val_labels,
-    folds=10,
+        train_features,
+        test_features,
+        train_labels,
+        test_labels,
+        model_list,
+        ##################
+        model_parameters,
+        ##################
+        reduce_dims,
+        metrics,
+        res_path,
+        val_features,
+        val_labels,
+        folds=10,
 ):
-    num_params_per_model = []
-    for params in model_parameters:
-        num_params_per_model.append(len(params))
 
     ############################
-    # TODO: VALIDATION: Figure out how to access list of models and edit params - Tumi
+    model_best_params = validation_stage(
+        model_list, model_parameters,
+        train_features, train_labels,
+        test_features, test_labels)
+
+    print("[INFO] Applying Best Parameters to Models")
+    for i in range(len(tqdm(model_list))):
+        model_list[i] = model_list[i](**model_best_params[i])
+
+    print("[INFO] Training and Testing Optimised Models")
     ############################
 
     final_dict_results = {}
@@ -241,6 +269,5 @@ def multi_model_run(
     df = pd.DataFrame.from_dict(final_dict_results)
     df.to_csv(f"{res_path}/outputs.csv", mode="a")
     return final_dict_results
-
 
 # %%
