@@ -1,10 +1,12 @@
 # %%
 import os
+import random
 from datetime import datetime
 from operator import contains, mod
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy
 import numpy as np
 import pandas as pd
 from sklearn.decomposition import PCA
@@ -17,6 +19,8 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier
 from tqdm import tqdm
+
+from .utils import *
 
 # %%
 
@@ -54,7 +58,7 @@ def visualize_image(features, res_path):
         plt.subplot(5, 5, i + 1)
         plt.xticks([])
         plt.yticks([])
-        plt.imshow(features[i].reshape(28, 28), cmap='gray')
+        plt.imshow(features[i].reshape(28, 28), cmap="gray")
     # plt.show()
     plt.savefig(f"{res_path}/dataset_image.png")
 
@@ -105,15 +109,18 @@ def load_data(main_path, subset=None):
 # ML PIPELINE
 
 
-def preproces_skeleton(array, process=np.flip):
-    # currently does for all images in array
-    # TODO : Add results to the array
-    if process == None:
-        return array
-    else:
-        for i in range(array.shape[0]):
-            array[i] = process(array[i])
-        return array
+def return_process(im):
+    list_of_procs = [np.flip]
+    return random.choice(list_of_procs)(
+        im
+    )  # TODO :add probability and every other transform
+
+
+def preproces_skeleton(array, labels):
+    # TODO : Append results to the array instead of replacing it
+    # TODO : Use the labels to make sure it is correct after you append something
+    array = parallel(return_process, arr=array)
+    return array, labels
 
 
 def dimensionality_reduction(X, X_test, method="pca"):
@@ -146,7 +153,9 @@ def train_and_predict(
     X_test = StandardScaler().fit_transform(val_features)  # essentially validation set
 
     # preprocess_step
-    X = preproces_skeleton(X, None)
+    X, train_labels = preproces_skeleton(X, train_labels)
+
+    visualize_image(X, res_path)
     if reduce_dims != None:
         dimensionality_reduction(X, X_test, reduce_dims)
 

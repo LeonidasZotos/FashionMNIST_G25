@@ -24,7 +24,7 @@ print_shapes(
 # SEE IF READING WORKED + make folder for results
 if not Path.is_dir(Path(res_path)):
     os.mkdir(res_path)
-visualize_image(train_features, res_path)
+# visualize_image(train_features, res_path)
 
 # %% Run entire pipeline
 multi_model_run(
