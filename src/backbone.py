@@ -116,7 +116,7 @@ def return_process(im):
     )  # TODO :add probability and every other transform
 
 
-def preproces_skeleton(array, labels):
+def preproces_skeleton(array, labels, disable=False):
     # TODO : Append results to the array instead of replacing it
     # TODO : Use the labels to make sure it is correct after you append something
     array = parallel(return_process, arr=array)
@@ -153,7 +153,9 @@ def train_and_predict(
     X_test = StandardScaler().fit_transform(val_features)  # essentially validation set
 
     # preprocess_step
-    X, train_labels = preproces_skeleton(X, train_labels)
+    X, train_labels = preproces_skeleton(
+        X, train_labels, disable=True
+    )  # enable for processing
 
     visualize_image(X, res_path)
     if reduce_dims != None:
