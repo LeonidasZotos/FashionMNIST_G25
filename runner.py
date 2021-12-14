@@ -15,7 +15,7 @@ res_path = str(os.getcwd()) + "/outputs/" + time_now
     val_labels,
     test_features,
     test_labels,
-) = load_data(main_path=main_path, subset=10000)
+) = load_data(main_path=main_path, subset=1000)
 print_shapes(
     [train_features, val_features, train_labels, val_labels, test_features, test_labels]
 )

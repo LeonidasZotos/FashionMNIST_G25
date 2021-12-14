@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy
 import numpy as np
 import pandas as pd
+from joblib import Parallel, delayed
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import *
@@ -275,21 +276,27 @@ def multi_model_run(
     ############################
 
     final_dict_results = {}
-    for model in tqdm(model_list):
-        final_dict_results[str(model)] = train_and_predict(
-            train_features=train_features,
-            test_features=test_features,
-            train_labels=train_labels,
-            test_labels=test_labels,
-            val_features=val_features,
-            val_labels=val_labels,
-            model=model,
-            reduce_dims=reduce_dims,
-            metrics=metrics,
-            res_path=res_path,
-            folds=folds,
+    results = Parallel(n_jobs=2)(
+        delayed(train_and_predict)(
+            train_features,
+            test_features,
+            train_labels,
+            test_labels,
+            val_features,
+            val_labels,
+            m,
+            metrics,
+            res_path,
+            reduce_dims,
+            folds,
         )
-    print(final_dict_results)
+        for m in tqdm(model_list)
+    )
+
+    final_dict_results = {
+        str(model_list[i]): results[i] for i in range(len(model_list))
+    }
+    # print(final_dict_results)
     df = pd.DataFrame.from_dict(final_dict_results)
     df.to_csv(f"{res_path}/outputs.csv", mode="a")
     return final_dict_results
