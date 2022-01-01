@@ -22,6 +22,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier
 from tqdm import tqdm
 
+from scipy import ndimage
+
 from .utils import *
 
 # %%
@@ -110,12 +112,29 @@ def load_data(main_path, subset=None):
 # %%
 # ML PIPELINE
 
+def flip(x):
+    return np.flip(x)
 
-def return_process(im):
-    list_of_procs = [np.flip, lambda x: x * 2, lambda x: x ** 2]
-    return random.choice(list_of_procs)(
-        im
-    )  # TODO :add probability and every other transform
+def gaussian_filter(x):
+    return ndimage.gaussian_filter(x, sigma = 1) # sigma=1 seems to give best results
+
+def convolveOutline(x):
+    weights = [-1, 4, -1] # Outlining
+    x = ndimage.convolve(x, weights)
+    return x
+
+def convolveSharpen(x):
+    weights = [0, 2, 0] # Sharpening
+    x = ndimage.convolve(x, weights)
+    return x
+
+def return_process(im): # TODO :add probability and every other transform
+    list_of_transforms = [flip, gaussian_filter, convolveOutline, convolveSharpen]
+
+    chosenTransform = random.choices(list_of_transforms, weights = (1, 1, 1, 1))
+    # "weights" determines probability to choose each transformation
+    return chosenTransform[0](im)
+    # return random.choice(list_of_transforms)(im)
 
 
 def preprocess_skeleton(array, labels, disable=False, sequential=True):
@@ -164,7 +183,7 @@ def train_and_predict(
 
     # preprocess_step
     X, train_labels = preprocess_skeleton(
-        X, train_labels, disable=False
+        X, train_labels,
     )  # enable for processing
 
     visualize_image(X, res_path)
