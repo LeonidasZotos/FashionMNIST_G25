@@ -5,8 +5,9 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+
 import matplotlib.pyplot as plt
-import numpy
+import math
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
@@ -112,8 +113,12 @@ def load_data(main_path, subset=None):
 # %%
 # ML PIPELINE
 
-def flip(x):
-    return np.flip(x)
+def flip(x): #Horizontal flip
+    #28*28
+    x = np.reshape(x, (28, 28))
+    x = np.fliplr(x)
+    x = x.flatten() # Return to 1d array
+    return x
 
 def gaussian_filter(x):
     return ndimage.gaussian_filter(x, sigma = 1) # sigma=1 seems to give best results
@@ -128,24 +133,29 @@ def convolveSharpen(x):
     x = ndimage.convolve(x, weights)
     return x
 
-def return_process(im): # TODO :add probability and every other transform
-    list_of_transforms = [flip, gaussian_filter, convolveOutline, convolveSharpen]
-
-    chosenTransform = random.choices(list_of_transforms, weights = (1, 1, 1, 1))
+def return_process(im): # TODO : Add probability and every other transform
+    list_of_transforms = [lambda x : x, flip, gaussian_filter, convolveOutline, convolveSharpen] # first returns the original (no transform)
     # "weights" determines probability to choose each transformation
+    chosenTransform = random.choices(list_of_transforms, weights = (0, 1, 1, 1, 1))
     return chosenTransform[0](im)
-    # return random.choice(list_of_transforms)(im)
 
 
 def preprocess_skeleton(array, labels, disable=False, sequential=True):
-    # TODO : Append results to the array instead of replacing it
-    # TODO : Use the labels to make sure it is correct after you append something
     if disable == True:
         return array, labels
     else:
         if sequential == True:
             # array = parallel(return_process, arr=array)
-            array = np.array([return_process(x) for x in array])
+            percentToTransform = 0.5 # use 0.5 to transform 50% of the data and append to the end
+            originalLength = len(array)
+            numberOfTransforms = math.floor(len(array) * percentToTransform)
+
+            for i in range (0, numberOfTransforms):
+                chosenIndex = random.randrange(originalLength)
+                transformedImage = return_process(array[chosenIndex])
+                array = np.vstack((array, transformedImage)) # add transformed image to set
+                labels = np.append(labels, labels[chosenIndex]) # also copy the label
+                
             return array, labels
         else:
             array = parallel(return_process, arr=array)
