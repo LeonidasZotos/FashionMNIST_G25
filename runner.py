@@ -15,7 +15,7 @@ res_path = str(os.getcwd()) + "/outputs/" + time_now
     val_labels,
     test_features,
     test_labels,
-) = load_data(main_path=main_path, subset=1000)
+) = load_data(main_path=main_path, subset=100)
 print_shapes(
     [train_features, val_features, train_labels, val_labels, test_features, test_labels]
 )
@@ -39,8 +39,8 @@ multi_model_run(
         KNeighborsClassifier,
         RandomForestClassifier,
         MLPClassifier,
+        DecisionTreeClassifier,
     ],
-    ####################################
     model_parameters=[
         {"n_neighbors": [3, 4, 5, 6, 7]},
         {
@@ -48,9 +48,17 @@ multi_model_run(
             "n_estimators": [8, 10, 12],
             "max_features": [1, 2, 3],
         },
-        {"hidden_layer_sizes": [28, 42, 56, 70, 84], "max_iter": [1000, 1500, 2000]},
+        {
+            "hidden_layer_sizes": [28, 42, 56, 70, 84],
+            "max_iter": [1000, 1500, 2000]
+        },
+        {
+             "random_state": [0, 1, 2, 3, 4],
+             "max_depth": [10, 15, 20, 25],
+             "max_features": [10, 15, 20, 25]
+
+        }
     ],
-    ####################################
     metrics=[
         accuracy_score,
         precision_score,
@@ -65,3 +73,4 @@ multi_model_run(
 end_time = time.time() - start_time
 with open(res_path + "/outputs.csv", "a+") as f:
     f.write(f"\nTime taken : {end_time}")
+
