@@ -1,20 +1,22 @@
 # %%
+import math
 import os
 import random
 import time
 from datetime import datetime
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import graphviz
-import math
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
+from scipy import ndimage
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import *
-from sklearn.metrics import plot_confusion_matrix, plot_det_curve, plot_roc_curve
+from sklearn.metrics import (plot_confusion_matrix, plot_det_curve,
+                             plot_roc_curve)
 from sklearn.model_selection import (GridSearchCV, KFold, cross_val_score,
                                      train_test_split)
 from sklearn.neighbors import KNeighborsClassifier
@@ -22,8 +24,6 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier, export_graphviz
 from tqdm import tqdm
-
-from scipy import ndimage
 
 from .utils import *
 
@@ -124,6 +124,7 @@ def load_data(main_path, subset=None):
 # %%
 # ML PIPELINE
 
+
 def flip(x):  # Horizontal flip
     # 28*28
     x = np.reshape(x, (28, 28))
@@ -133,24 +134,66 @@ def flip(x):  # Horizontal flip
 
 
 def gaussian_filter(x):
-    return ndimage.gaussian_filter(x, sigma=1)  # sigma=1 seems to give best results
+    # sigma=1 seems to give best results
+    return ndimage.gaussian_filter(x, sigma=1)
+
+
+def maxf(x):
+    return ndimage.maximum_filter(x, 2)
 
 
 def convolveOutline(x):
     weights = [-1, 4, -1]  # Outlining
-    x = ndimage.convolve(x, weights)
+    try:
+        x = ndimage.convolve(x, weights)
+    except RuntimeError:
+        x = x[:, :, None]
+        x = ndimage.convolve(x, weights)
     return x
 
 
 def convolveSharpen(x):
     weights = [0, 2, 0]  # Sharpening
-    x = ndimage.convolve(x, weights)
+    try:
+        x = ndimage.convolve(x, weights)
+    except RuntimeError:
+        x = x[:, :, None]
+        x = ndimage.convolve(x, weights)
     return x
 
 
-def return_process(im):  # TODO : Add probability and every other transform
-    list_of_transforms = [lambda x: x, flip, gaussian_filter, convolveOutline,
-                          convolveSharpen]  # first returns the original (no transform)
+def visualize_transforms(features, res_path):
+    from mpl_toolkits.axes_grid1 import ImageGrid
+
+    im1 = features[0]
+    im2 = flip(im1).reshape(28, 28)
+    im3 = convolveOutline(im1).reshape(28, 28)
+    im4 = convolveSharpen(im1).reshape(28, 28)
+    im5 = gaussian_filter(im1).reshape(28, 28)
+    im6 = maxf(im1).reshape(28, 28)
+
+    _, axs = plt.subplots(3, 2)
+    axs = axs.flatten()
+    names = ["original", "flip", "outline", "sharpen", "gaussian", "maximum"]
+    i = 0
+    for img, ax in zip([im1.reshape(28, 28), im2, im3, im4, im5, im6], axs):
+        ax.imshow(img, cmap="gray")
+        ax.axes.xaxis.set_visible(False)
+        ax.axes.yaxis.set_visible(False)
+        ax.set_title(names[i])
+        i += 1
+
+    plt.savefig(f"{res_path}/transform_image.png")
+
+
+def return_process(im):
+    list_of_transforms = [
+        lambda x: x,
+        flip,
+        gaussian_filter,
+        convolveOutline,
+        convolveSharpen,
+    ]  # first returns the original (no transform)
     # "weights" determines probability to choose each transformation
     chosenTransform = random.choices(list_of_transforms, weights=(0, 1, 1, 1, 1))
     return chosenTransform[0](im)
@@ -162,15 +205,19 @@ def preprocess_skeleton(array, labels, disable=False, sequential=True):
     else:
         if sequential == True:
             # array = parallel(return_process, arr=array)
-            percentToTransform = 0.5  # use 0.5 to transform 50% of the data and append to the end
+            percentToTransform = (
+                0.5  # use 0.5 to transform 50% of the data and append to the end
+            )
             originalLength = len(array)
             numberOfTransforms = math.floor(len(array) * percentToTransform)
 
             for i in range(0, numberOfTransforms):
                 chosenIndex = random.randrange(originalLength)
                 transformedImage = return_process(array[chosenIndex])
-                array = np.vstack((array, transformedImage))  # add transformed image to set
-                labels = np.append(labels, labels[chosenIndex])  # also copy the label
+                # add transformed image to set
+                array = np.vstack((array, transformedImage))
+                # also copy the label
+                labels = np.append(labels, labels[chosenIndex])
 
             return array, labels
         else:
@@ -187,17 +234,17 @@ def dimensionality_reduction(X, X_test, method="pca"):
 
 
 def train_and_predict(
-        train_features,
-        test_features,
-        train_labels,
-        test_labels,
-        val_features,
-        val_labels,
-        model,
-        metrics,
-        res_path,
-        reduce_dims=None,
-        folds=10,
+    train_features,
+    test_features,
+    train_labels,
+    test_labels,
+    val_features,
+    val_labels,
+    model,
+    metrics,
+    res_path,
+    reduce_dims=None,
+    folds=10,
 ):
     # scale data
     train_features = np.concatenate(
@@ -209,10 +256,12 @@ def train_and_predict(
 
     # preprocess_step
     X, train_labels = preprocess_skeleton(
-        X, train_labels,
+        X,
+        train_labels,
     )  # enable for processing
 
     visualize_image(X, res_path)
+    visualize_transforms(X, res_path)
     if reduce_dims != None:
         dimensionality_reduction(X, X_test, reduce_dims)
 
@@ -259,12 +308,12 @@ Method used to do validation of the models in the model list over a predefined l
 
 
 def validation_stage(
-        model_list,
-        model_parameters,
-        train_features,
-        train_labels,
-        test_features,
-        test_labels,
+    model_list,
+    model_parameters,
+    train_features,
+    train_labels,
+    test_features,
+    test_labels,
 ):
     # Perform the Validation using Sklearn GridSearch
 
@@ -299,18 +348,18 @@ Method used to run multiple models for comparison
 
 
 def multi_model_run(
-        train_features,
-        test_features,
-        train_labels,
-        test_labels,
-        model_list,
-        model_parameters,
-        reduce_dims,
-        metrics,
-        res_path,
-        val_features,
-        val_labels,
-        folds=10,
+    train_features,
+    test_features,
+    train_labels,
+    test_labels,
+    model_list,
+    model_parameters,
+    reduce_dims,
+    metrics,
+    res_path,
+    val_features,
+    val_labels,
+    folds=10,
 ):
     # Determine the best parameters for each of the models defined in model list and from the list of model parameters
     model_best_params = validation_stage(
@@ -357,5 +406,6 @@ def multi_model_run(
     df = pd.DataFrame.from_dict(final_dict_results)
     df.to_csv(f"{res_path}/outputs.csv", mode="a")
     return final_dict_results
+
 
 # %%

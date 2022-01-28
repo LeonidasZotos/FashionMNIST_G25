@@ -27,27 +27,30 @@
 <span>Expand source code</span>
 </summary>
 <pre><code class="python"># %%
+import math
 import os
 import random
 import time
 from datetime import datetime
 from pathlib import Path
 
+import graphviz
 import matplotlib.pyplot as plt
-import numpy
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
+from scipy import ndimage
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import *
-from sklearn.metrics import plot_confusion_matrix
+from sklearn.metrics import (plot_confusion_matrix, plot_det_curve,
+                             plot_roc_curve)
 from sklearn.model_selection import (GridSearchCV, KFold, cross_val_score,
                                      train_test_split)
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.tree import DecisionTreeClassifier, export_graphviz
 from tqdm import tqdm
 
 from .utils import *
@@ -82,6 +85,10 @@ def print_shapes(arr):
 
 # %%
 
+&#34;&#34;&#34;
+Used to visualise the images
+&#34;&#34;&#34;
+
 
 def visualize_image(features, res_path):
     for i in range(25):
@@ -95,12 +102,17 @@ def visualize_image(features, res_path):
 
 # %%
 
+&#34;&#34;&#34;
+Load the training and testing data from the fashion-mnist data set
+&#34;&#34;&#34;
+
 
 def load_data(main_path, subset=None):
     df_train = pd.read_csv(str(main_path / &#34;fashion-mnist_train.csv&#34;))
     df_test = pd.read_csv(str(main_path / &#34;fashion-mnist_test.csv&#34;))
     print(df_train.head(5))
 
+    # If a subset has been defined and is valid
     if subset != None and subset &gt; 0:
         df_train = df_train.head(subset)
         df_test = df_test.head(subset)
@@ -108,6 +120,7 @@ def load_data(main_path, subset=None):
     train_features, val_features, train_labels, val_labels = train_test_split(
         df_train.drop(&#34;label&#34;, axis=1), df_train[&#34;label&#34;], test_size=0.2
     )
+
     test_features, test_labels = df_test.drop(&#34;label&#34;, axis=1), df_test[&#34;label&#34;]
     (
         train_features,
@@ -124,6 +137,7 @@ def load_data(main_path, subset=None):
         test_features.to_numpy(),
         test_labels.to_numpy(),
     )
+
     print(&#34;[INFO] DONE LOADING DATA&#34;)
     return (
         train_features,
@@ -139,22 +153,100 @@ def load_data(main_path, subset=None):
 # ML PIPELINE
 
 
+def flip(x):  # Horizontal flip
+    # 28*28
+    x = np.reshape(x, (28, 28))
+    x = np.fliplr(x)
+    x = x.flatten()  # Return to 1d array
+    return x
+
+
+def gaussian_filter(x):
+    # sigma=1 seems to give best results
+    return ndimage.gaussian_filter(x, sigma=1)
+
+
+def maxf(x):
+    return ndimage.maximum_filter(x, 2)
+
+
+def convolveOutline(x):
+    weights = [-1, 4, -1]  # Outlining
+    try:
+        x = ndimage.convolve(x, weights)
+    except RuntimeError:
+        x = x[:, :, None]
+        x = ndimage.convolve(x, weights)
+    return x
+
+
+def convolveSharpen(x):
+    weights = [0, 2, 0]  # Sharpening
+    try:
+        x = ndimage.convolve(x, weights)
+    except RuntimeError:
+        x = x[:, :, None]
+        x = ndimage.convolve(x, weights)
+    return x
+
+
+def visualize_transforms(features, res_path):
+    from mpl_toolkits.axes_grid1 import ImageGrid
+
+    im1 = features[0]
+    im2 = flip(im1).reshape(28, 28)
+    im3 = convolveOutline(im1).reshape(28, 28)
+    im4 = convolveSharpen(im1).reshape(28, 28)
+    im5 = gaussian_filter(im1).reshape(28, 28)
+    im6 = maxf(im1).reshape(28, 28)
+
+    _, axs = plt.subplots(3, 2)
+    axs = axs.flatten()
+    names = [&#34;original&#34;, &#34;flip&#34;, &#34;outline&#34;, &#34;sharpen&#34;, &#34;gaussian&#34;, &#34;maximum&#34;]
+    i = 0
+    for img, ax in zip([im1.reshape(28, 28), im2, im3, im4, im5, im6], axs):
+        ax.imshow(img, cmap=&#34;gray&#34;)
+        ax.axes.xaxis.set_visible(False)
+        ax.axes.yaxis.set_visible(False)
+        ax.set_title(names[i])
+        i += 1
+
+    plt.savefig(f&#34;{res_path}/transform_image.png&#34;)
+
+
 def return_process(im):
-    list_of_procs = [np.flip, lambda x: x * 2, lambda x: x ** 2]
-    return random.choice(list_of_procs)(
-        im
-    )  # TODO :add probability and every other transform
+    list_of_transforms = [
+        lambda x: x,
+        flip,
+        gaussian_filter,
+        convolveOutline,
+        convolveSharpen,
+    ]  # first returns the original (no transform)
+    # &#34;weights&#34; determines probability to choose each transformation
+    chosenTransform = random.choices(list_of_transforms, weights=(0, 1, 1, 1, 1))
+    return chosenTransform[0](im)
 
 
 def preprocess_skeleton(array, labels, disable=False, sequential=True):
-    # TODO : Append results to the array instead of replacing it
-    # TODO : Use the labels to make sure it is correct after you append something
     if disable == True:
         return array, labels
     else:
         if sequential == True:
             # array = parallel(return_process, arr=array)
-            array = np.array([return_process(x) for x in array])
+            percentToTransform = (
+                0.5  # use 0.5 to transform 50% of the data and append to the end
+            )
+            originalLength = len(array)
+            numberOfTransforms = math.floor(len(array) * percentToTransform)
+
+            for i in range(0, numberOfTransforms):
+                chosenIndex = random.randrange(originalLength)
+                transformedImage = return_process(array[chosenIndex])
+                # add transformed image to set
+                array = np.vstack((array, transformedImage))
+                # also copy the label
+                labels = np.append(labels, labels[chosenIndex])
+
             return array, labels
         else:
             array = parallel(return_process, arr=array)
@@ -192,10 +284,12 @@ def train_and_predict(
 
     # preprocess_step
     X, train_labels = preprocess_skeleton(
-        X, train_labels, disable=False
+        X,
+        train_labels,
     )  # enable for processing
 
     visualize_image(X, res_path)
+    visualize_transforms(X, res_path)
     if reduce_dims != None:
         dimensionality_reduction(X, X_test, reduce_dims)
 
@@ -236,6 +330,11 @@ def train_and_predict(
     return dict_results
 
 
+&#34;&#34;&#34;
+Method used to do validation of the models in the model list over a predefined list of parameters
+&#34;&#34;&#34;
+
+
 def validation_stage(
     model_list,
     model_parameters,
@@ -245,17 +344,19 @@ def validation_stage(
     test_labels,
 ):
     # Perform the Validation using Sklearn GridSearch
+
     model_best_params = []
+
     print(&#34;[INFO] Performing Validation&#34;)
     for i in range(len(tqdm(model_list))):
         print(&#34;[VALIDATION] %s model being validated\n&#34; % (model_list[i]))
         grid = GridSearchCV(
-            model_list[i](), model_parameters[i], verbose=1, refit=True, n_jobs=12
+            model_list[i](), model_parameters[i], verbose=3, refit=True, n_jobs=12
         )
         grid.fit(train_features, train_labels)
 
         model_best_params.append(grid.best_params_)
-        # model_best_params[model_list[i]] = grid.best_params_
+
         grid_predictions = grid.predict(test_features)
 
         print(classification_report(test_labels, grid_predictions))
@@ -269,15 +370,18 @@ def validation_stage(
     return model_best_params
 
 
+&#34;&#34;&#34;
+Method used to run multiple models for comparison
+&#34;&#34;&#34;
+
+
 def multi_model_run(
     train_features,
     test_features,
     train_labels,
     test_labels,
     model_list,
-    ##################
     model_parameters,
-    ##################
     reduce_dims,
     metrics,
     res_path,
@@ -285,8 +389,7 @@ def multi_model_run(
     val_labels,
     folds=10,
 ):
-
-    ############################
+    # Determine the best parameters for each of the models defined in model list and from the list of model parameters
     model_best_params = validation_stage(
         model_list,
         model_parameters,
@@ -296,12 +399,13 @@ def multi_model_run(
         test_labels,
     )
 
+    # Create instances of the models in the model lists while making use of the best
+    #   parameters attained in the validation stage
     print(&#34;[INFO] Applying Best Parameters to Models&#34;)
     for i in range(len(tqdm(model_list))):
         model_list[i] = model_list[i](**model_best_params[i])
 
     print(&#34;[INFO] Training and Testing Optimised Models&#34;)
-    ############################
 
     final_dict_results = {}
     results = Parallel(n_jobs=2)(
@@ -320,10 +424,12 @@ def multi_model_run(
         )
         for m in tqdm(model_list)
     )
+    print(&#34;[INFO] Models Done Running\n[INFO] Compiling Results&#34;)
 
     final_dict_results = {
         str(model_list[i]): results[i] for i in range(len(model_list))
     }
+
     # print(final_dict_results)
     df = pd.DataFrame.from_dict(final_dict_results)
     df.to_csv(f&#34;{res_path}/outputs.csv&#34;, mode=&#34;a&#34;)
@@ -340,6 +446,44 @@ def multi_model_run(
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
+<dt id="src.backbone.convolveOutline"><code class="name flex">
+<span>def <span class="ident">convolveOutline</span></span>(<span>x)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def convolveOutline(x):
+    weights = [-1, 4, -1]  # Outlining
+    try:
+        x = ndimage.convolve(x, weights)
+    except RuntimeError:
+        x = x[:, :, None]
+        x = ndimage.convolve(x, weights)
+    return x</code></pre>
+</details>
+</dd>
+<dt id="src.backbone.convolveSharpen"><code class="name flex">
+<span>def <span class="ident">convolveSharpen</span></span>(<span>x)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def convolveSharpen(x):
+    weights = [0, 2, 0]  # Sharpening
+    try:
+        x = ndimage.convolve(x, weights)
+    except RuntimeError:
+        x = x[:, :, None]
+        x = ndimage.convolve(x, weights)
+    return x</code></pre>
+</details>
+</dd>
 <dt id="src.backbone.dimensionality_reduction"><code class="name flex">
 <span>def <span class="ident">dimensionality_reduction</span></span>(<span>X, X_test, method='pca')</span>
 </code></dt>
@@ -357,6 +501,37 @@ def multi_model_run(
         X_test = pca.transform(X_test)</code></pre>
 </details>
 </dd>
+<dt id="src.backbone.flip"><code class="name flex">
+<span>def <span class="ident">flip</span></span>(<span>x)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def flip(x):  # Horizontal flip
+    # 28*28
+    x = np.reshape(x, (28, 28))
+    x = np.fliplr(x)
+    x = x.flatten()  # Return to 1d array
+    return x</code></pre>
+</details>
+</dd>
+<dt id="src.backbone.gaussian_filter"><code class="name flex">
+<span>def <span class="ident">gaussian_filter</span></span>(<span>x)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def gaussian_filter(x):
+    # sigma=1 seems to give best results
+    return ndimage.gaussian_filter(x, sigma=1)</code></pre>
+</details>
+</dd>
 <dt id="src.backbone.load_data"><code class="name flex">
 <span>def <span class="ident">load_data</span></span>(<span>main_path, subset=None)</span>
 </code></dt>
@@ -371,6 +546,7 @@ def multi_model_run(
     df_test = pd.read_csv(str(main_path / &#34;fashion-mnist_test.csv&#34;))
     print(df_train.head(5))
 
+    # If a subset has been defined and is valid
     if subset != None and subset &gt; 0:
         df_train = df_train.head(subset)
         df_test = df_test.head(subset)
@@ -378,6 +554,7 @@ def multi_model_run(
     train_features, val_features, train_labels, val_labels = train_test_split(
         df_train.drop(&#34;label&#34;, axis=1), df_train[&#34;label&#34;], test_size=0.2
     )
+
     test_features, test_labels = df_test.drop(&#34;label&#34;, axis=1), df_test[&#34;label&#34;]
     (
         train_features,
@@ -394,6 +571,7 @@ def multi_model_run(
         test_features.to_numpy(),
         test_labels.to_numpy(),
     )
+
     print(&#34;[INFO] DONE LOADING DATA&#34;)
     return (
         train_features,
@@ -403,6 +581,19 @@ def multi_model_run(
         test_features,
         test_labels,
     )</code></pre>
+</details>
+</dd>
+<dt id="src.backbone.maxf"><code class="name flex">
+<span>def <span class="ident">maxf</span></span>(<span>x)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def maxf(x):
+    return ndimage.maximum_filter(x, 2)</code></pre>
 </details>
 </dd>
 <dt id="src.backbone.multi_model_run"><code class="name flex">
@@ -420,9 +611,7 @@ def multi_model_run(
     train_labels,
     test_labels,
     model_list,
-    ##################
     model_parameters,
-    ##################
     reduce_dims,
     metrics,
     res_path,
@@ -430,8 +619,7 @@ def multi_model_run(
     val_labels,
     folds=10,
 ):
-
-    ############################
+    # Determine the best parameters for each of the models defined in model list and from the list of model parameters
     model_best_params = validation_stage(
         model_list,
         model_parameters,
@@ -441,12 +629,13 @@ def multi_model_run(
         test_labels,
     )
 
+    # Create instances of the models in the model lists while making use of the best
+    #   parameters attained in the validation stage
     print(&#34;[INFO] Applying Best Parameters to Models&#34;)
     for i in range(len(tqdm(model_list))):
         model_list[i] = model_list[i](**model_best_params[i])
 
     print(&#34;[INFO] Training and Testing Optimised Models&#34;)
-    ############################
 
     final_dict_results = {}
     results = Parallel(n_jobs=2)(
@@ -465,10 +654,12 @@ def multi_model_run(
         )
         for m in tqdm(model_list)
     )
+    print(&#34;[INFO] Models Done Running\n[INFO] Compiling Results&#34;)
 
     final_dict_results = {
         str(model_list[i]): results[i] for i in range(len(model_list))
     }
+
     # print(final_dict_results)
     df = pd.DataFrame.from_dict(final_dict_results)
     df.to_csv(f&#34;{res_path}/outputs.csv&#34;, mode=&#34;a&#34;)
@@ -485,14 +676,25 @@ def multi_model_run(
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def preprocess_skeleton(array, labels, disable=False, sequential=True):
-    # TODO : Append results to the array instead of replacing it
-    # TODO : Use the labels to make sure it is correct after you append something
     if disable == True:
         return array, labels
     else:
         if sequential == True:
             # array = parallel(return_process, arr=array)
-            array = np.array([return_process(x) for x in array])
+            percentToTransform = (
+                0.5  # use 0.5 to transform 50% of the data and append to the end
+            )
+            originalLength = len(array)
+            numberOfTransforms = math.floor(len(array) * percentToTransform)
+
+            for i in range(0, numberOfTransforms):
+                chosenIndex = random.randrange(originalLength)
+                transformedImage = return_process(array[chosenIndex])
+                # add transformed image to set
+                array = np.vstack((array, transformedImage))
+                # also copy the label
+                labels = np.append(labels, labels[chosenIndex])
+
             return array, labels
         else:
             array = parallel(return_process, arr=array)
@@ -523,10 +725,16 @@ def multi_model_run(
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def return_process(im):
-    list_of_procs = [np.flip, lambda x: x * 2, lambda x: x ** 2]
-    return random.choice(list_of_procs)(
-        im
-    )  # TODO :add probability and every other transform</code></pre>
+    list_of_transforms = [
+        lambda x: x,
+        flip,
+        gaussian_filter,
+        convolveOutline,
+        convolveSharpen,
+    ]  # first returns the original (no transform)
+    # &#34;weights&#34; determines probability to choose each transformation
+    chosenTransform = random.choices(list_of_transforms, weights=(0, 1, 1, 1, 1))
+    return chosenTransform[0](im)</code></pre>
 </details>
 </dd>
 <dt id="src.backbone.return_shape"><code class="name flex">
@@ -574,10 +782,12 @@ def multi_model_run(
 
     # preprocess_step
     X, train_labels = preprocess_skeleton(
-        X, train_labels, disable=False
+        X,
+        train_labels,
     )  # enable for processing
 
     visualize_image(X, res_path)
+    visualize_transforms(X, res_path)
     if reduce_dims != None:
         dimensionality_reduction(X, X_test, reduce_dims)
 
@@ -636,17 +846,19 @@ def multi_model_run(
     test_labels,
 ):
     # Perform the Validation using Sklearn GridSearch
+
     model_best_params = []
+
     print(&#34;[INFO] Performing Validation&#34;)
     for i in range(len(tqdm(model_list))):
         print(&#34;[VALIDATION] %s model being validated\n&#34; % (model_list[i]))
         grid = GridSearchCV(
-            model_list[i](), model_parameters[i], verbose=1, refit=True, n_jobs=12
+            model_list[i](), model_parameters[i], verbose=3, refit=True, n_jobs=12
         )
         grid.fit(train_features, train_labels)
 
         model_best_params.append(grid.best_params_)
-        # model_best_params[model_list[i]] = grid.best_params_
+
         grid_predictions = grid.predict(test_features)
 
         print(classification_report(test_labels, grid_predictions))
@@ -679,6 +891,39 @@ def multi_model_run(
     plt.savefig(f&#34;{res_path}/dataset_image.png&#34;)</code></pre>
 </details>
 </dd>
+<dt id="src.backbone.visualize_transforms"><code class="name flex">
+<span>def <span class="ident">visualize_transforms</span></span>(<span>features, res_path)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def visualize_transforms(features, res_path):
+    from mpl_toolkits.axes_grid1 import ImageGrid
+
+    im1 = features[0]
+    im2 = flip(im1).reshape(28, 28)
+    im3 = convolveOutline(im1).reshape(28, 28)
+    im4 = convolveSharpen(im1).reshape(28, 28)
+    im5 = gaussian_filter(im1).reshape(28, 28)
+    im6 = maxf(im1).reshape(28, 28)
+
+    _, axs = plt.subplots(3, 2)
+    axs = axs.flatten()
+    names = [&#34;original&#34;, &#34;flip&#34;, &#34;outline&#34;, &#34;sharpen&#34;, &#34;gaussian&#34;, &#34;maximum&#34;]
+    i = 0
+    for img, ax in zip([im1.reshape(28, 28), im2, im3, im4, im5, im6], axs):
+        ax.imshow(img, cmap=&#34;gray&#34;)
+        ax.axes.xaxis.set_visible(False)
+        ax.axes.yaxis.set_visible(False)
+        ax.set_title(names[i])
+        i += 1
+
+    plt.savefig(f&#34;{res_path}/transform_image.png&#34;)</code></pre>
+</details>
+</dd>
 </dl>
 </section>
 <section>
@@ -697,8 +942,13 @@ def multi_model_run(
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
+<li><code><a title="src.backbone.convolveOutline" href="#src.backbone.convolveOutline">convolveOutline</a></code></li>
+<li><code><a title="src.backbone.convolveSharpen" href="#src.backbone.convolveSharpen">convolveSharpen</a></code></li>
 <li><code><a title="src.backbone.dimensionality_reduction" href="#src.backbone.dimensionality_reduction">dimensionality_reduction</a></code></li>
+<li><code><a title="src.backbone.flip" href="#src.backbone.flip">flip</a></code></li>
+<li><code><a title="src.backbone.gaussian_filter" href="#src.backbone.gaussian_filter">gaussian_filter</a></code></li>
 <li><code><a title="src.backbone.load_data" href="#src.backbone.load_data">load_data</a></code></li>
+<li><code><a title="src.backbone.maxf" href="#src.backbone.maxf">maxf</a></code></li>
 <li><code><a title="src.backbone.multi_model_run" href="#src.backbone.multi_model_run">multi_model_run</a></code></li>
 <li><code><a title="src.backbone.preprocess_skeleton" href="#src.backbone.preprocess_skeleton">preprocess_skeleton</a></code></li>
 <li><code><a title="src.backbone.print_shapes" href="#src.backbone.print_shapes">print_shapes</a></code></li>
@@ -707,6 +957,7 @@ def multi_model_run(
 <li><code><a title="src.backbone.train_and_predict" href="#src.backbone.train_and_predict">train_and_predict</a></code></li>
 <li><code><a title="src.backbone.validation_stage" href="#src.backbone.validation_stage">validation_stage</a></code></li>
 <li><code><a title="src.backbone.visualize_image" href="#src.backbone.visualize_image">visualize_image</a></code></li>
+<li><code><a title="src.backbone.visualize_transforms" href="#src.backbone.visualize_transforms">visualize_transforms</a></code></li>
 </ul>
 </li>
 </ul>

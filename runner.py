@@ -48,16 +48,12 @@ multi_model_run(
             "n_estimators": [8, 10, 12],
             "max_features": [1, 2, 3],
         },
+        {"hidden_layer_sizes": [28, 42, 56, 70, 84], "max_iter": [1000, 1500, 2000]},
         {
-            "hidden_layer_sizes": [28, 42, 56, 70, 84],
-            "max_iter": [1000, 1500, 2000]
+            "random_state": [0, 1, 2, 3, 4],
+            "max_depth": [10, 15, 20, 25],
+            "max_features": [10, 15, 20, 25],
         },
-        {
-             "random_state": [0, 1, 2, 3, 4],
-             "max_depth": [10, 15, 20, 25],
-             "max_features": [10, 15, 20, 25]
-
-        }
     ],
     metrics=[
         accuracy_score,
@@ -73,4 +69,3 @@ multi_model_run(
 end_time = time.time() - start_time
 with open(res_path + "/outputs.csv", "a+") as f:
     f.write(f"\nTime taken : {end_time}")
-
