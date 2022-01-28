@@ -156,13 +156,6 @@ def return_process(im):  # TODO : Add probability and every other transform
     return chosenTransform[0](im)
 
 
-def return_process(im):
-    list_of_procs = [np.flip, lambda x: x * 2, lambda x: x ** 2]
-    return random.choice(list_of_procs)(
-        im
-    )  # TODO :add probability and every other transform
-
-
 def preprocess_skeleton(array, labels, disable=False, sequential=True):
     if disable == True:
         return array, labels
