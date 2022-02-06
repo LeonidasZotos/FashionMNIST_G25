@@ -245,6 +245,7 @@ def train_and_predict(
     res_path,
     reduce_dims=None,
     folds=10,
+    preprocessing=False
 ):
     # scale data
     train_features = np.concatenate(
@@ -254,20 +255,25 @@ def train_and_predict(
     X = StandardScaler().fit_transform(train_features)
     X_test = StandardScaler().fit_transform(val_features)  # essentially validation set
 
-    # preprocess_step
-    X, train_labels = preprocess_skeleton(
-        X,
-        train_labels,
-    )  # enable for processing
+    if preprocessing:
+        print("[INFO] Preprocessing Data")
+        # preprocess_step
+        X, train_labels = preprocess_skeleton(
+            X,
+            train_labels,)  # enable for processing
 
+    print("[INFO] Done Preprocessing")
     visualize_image(X, res_path)
     visualize_transforms(X, res_path)
+
+    print("[INFO] Reducing Dimensions")
     if reduce_dims != None:
         dimensionality_reduction(X, X_test, reduce_dims)
 
     # k -fold
     dict_results = {x.__name__: [] for x in metrics}
 
+    print("[INFO] Metric Calculations")
     for metric in metrics:
         if metric.__name__ in ["precision_score", "f1_score", "recall_score"]:
             dict_results[metric.__name__] = np.mean(
@@ -294,9 +300,11 @@ def train_and_predict(
 
     print(dict_results)
 
+    print("[INFO] Plotting")
     plt.cla()
     plt.clf()
     plot_confusion_matrix(model.fit(X, train_labels), X_test, val_labels)
+    # ConfusionMatrixDisplay.plot(model, )
     plt.savefig(f"{res_path}/confusion_{str(model)}.png")
 
     return dict_results
@@ -360,6 +368,7 @@ def multi_model_run(
     val_features,
     val_labels,
     folds=10,
+    preprocessing=False
 ):
     # Determine the best parameters for each of the models defined in model list and from the list of model parameters
     model_best_params = validation_stage(
@@ -380,7 +389,7 @@ def multi_model_run(
     print("[INFO] Training and Testing Optimised Models")
 
     final_dict_results = {}
-    results = Parallel(n_jobs=2)(
+    results = Parallel(n_jobs=1)(
         delayed(train_and_predict)(
             train_features,
             test_features,
@@ -393,6 +402,7 @@ def multi_model_run(
             res_path,
             reduce_dims,
             folds,
+            preprocessing
         )
         for m in tqdm(model_list)
     )

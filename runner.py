@@ -3,9 +3,11 @@ import sklearn.neural_network
 from src.backbone import *
 
 # %%
+augmented = False
+with_augments = "Augmented" if augmented else "Non_Augmented"
 main_path = Path(os.getcwd()) / "data"
 time_now = datetime.now().strftime("%d_%m_%Hh%M")
-res_path = str(os.getcwd()) + "/outputs/" + time_now
+res_path = str(os.getcwd()) + "/outputs/" + time_now + "_" + with_augments
 # %%
 # READ DATA : Dont forget to remove subset (set to None for full data)
 (
@@ -15,7 +17,7 @@ res_path = str(os.getcwd()) + "/outputs/" + time_now
     val_labels,
     test_features,
     test_labels,
-) = load_data(main_path=main_path, subset=100)
+) = load_data(main_path=main_path, subset=None)
 print_shapes(
     [train_features, val_features, train_labels, val_labels, test_features, test_labels]
 )
@@ -63,6 +65,7 @@ multi_model_run(
     ],
     res_path=res_path,
     folds=5,
+    preprocessing=augmented
 )
 # %%
 # Save run_time to the outputs
